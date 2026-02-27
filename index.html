@@ -11,7 +11,6 @@
 
     <style>
         body {
-            /* Applied the new font */
             font-family: 'Mukta', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             background: linear-gradient(135deg, #fdfbfb 0%, #ebedee 100%);
             color: #333;
@@ -31,7 +30,7 @@
             border: 1px solid rgba(0,0,0,0.05);
         }
         h1 {
-            color: #c62828; /* Slightly richer, more premium red */
+            color: #c62828;
             font-size: 32px;
             font-weight: 700;
             margin-top: 0;
@@ -61,30 +60,27 @@
             height: 100%;
             border: 0;
         }
-        
-        /* New Button Styles */
         .btn-vegan {
             display: inline-block;
             margin-top: 30px;
             padding: 12px 30px;
-            background-color: #2E7D32; /* Nice earthy green */
+            background-color: #2E7D32;
             color: #ffffff;
             text-decoration: none;
             font-size: 20px;
             font-weight: 700;
-            border-radius: 50px; /* Pill shape */
+            border-radius: 50px;
             transition: all 0.3s ease;
             box-shadow: 0 4px 12px rgba(46, 125, 50, 0.3);
         }
         .btn-vegan:hover {
-            background-color: #1B5E20; /* Darker green on hover */
-            transform: translateY(-2px); /* Slight lift effect */
+            background-color: #1B5E20;
+            transform: translateY(-2px);
             box-shadow: 0 6px 16px rgba(46, 125, 50, 0.4);
         }
         .btn-vegan:active {
             transform: translateY(1px);
         }
-
         .status {
             margin-top: 15px;
             font-size: 13px;
@@ -99,17 +95,58 @@
     <p class="subtext">कृपया हा व्हिडिओ पूर्ण पाहा.</p>
 
     <div class="video-container">
-        <iframe src="https://www.youtube.com/embed/XhTOLeevtQw" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+        <div id="player"></div>
     </div>
 
-    <a href="https://vegansofpune.carrd.co/" target="_blank" class="btn-vegan">Vegans of Pune</a>
+    <a href="https://vegansofpune.carrd.co/" target="_blank" class="btn-vegan" id="vegan-btn">Vegans of Pune</a>
 
     <p class="status" id="statusMessage"></p>
 </div>
 
-<script>
-    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz4X5rlQ8hgu28fNx5XD4zjyXo_Q6NCptzv9clu7M9BN-i34A_kWQ8366wtV3OR6SGF/exec"; 
+<script src="https://www.youtube.com/iframe_api"></script>
 
+<script>
+    // REPLACE THIS WITH YOUR WEB APP URL
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwXV-M_D9cOsDD5COfKnyMz9lZNjaCbEPJ3EZ0zLcyprDFOiq41B2UpflC_pTYEGYvs/exec"; 
+
+    // --- User Identification ---
+    function getUserId() {
+        let uid = localStorage.getItem('tracker_uid');
+        if (!uid) {
+            uid = Date.now().toString(36) + Math.random().toString(36).substr(2);
+            localStorage.setItem('tracker_uid', uid);
+        }
+        return uid;
+    }
+
+    const currentUserId = getUserId();
+
+    // --- YouTube API Setup (Video Tracking) ---
+    var player;
+    function onYouTubeIframeAPIReady() {
+        player = new YT.Player('player', {
+            videoId: 'XhTOLeevtQw', 
+            events: {
+                'onStateChange': onPlayerStateChange
+            }
+        });
+    }
+
+    let videoTracked = false;
+    function onPlayerStateChange(event) {
+        // Track only when the video starts playing (State = 1)
+        if (event.data == YT.PlayerState.PLAYING && !videoTracked) {
+            videoTracked = true;
+            sendInteractionUpdate('Video');
+        }
+    }
+
+    // --- Button Tracking Setup ---
+    document.getElementById('vegan-btn').addEventListener('click', function() {
+        sendInteractionUpdate('Button');
+    });
+
+    // --- API Calls ---
     async function fetchWithTimeout(url, timeoutMs = 2500) {
         const controller = new AbortController();
         const id = setTimeout(() => controller.abort(), timeoutMs);
@@ -122,42 +159,37 @@
         try {
             const res1 = await fetchWithTimeout('https://get.geojs.io/v1/ip/geo.json');
             const data1 = await res1.json();
-            if (data1 && data1.city) {
-                return `${data1.city}, ${data1.region} - ${data1.organization_name || 'Unknown ISP'}`;
-            }
+            if (data1 && data1.city) return `${data1.city}, ${data1.region} - ${data1.organization_name || 'Unknown ISP'}`;
         } catch (e) { console.warn("GeoJS failed, trying fallback 1..."); }
 
         try {
             const res2 = await fetchWithTimeout('https://ipwho.is/');
             const data2 = await res2.json();
-            if (data2 && data2.success) {
-                return `${data2.city}, ${data2.region} ${data2.postal || '(No Pin)'} - ${data2.connection?.isp || 'Unknown ISP'}`;
-            }
+            if (data2 && data2.success) return `${data2.city}, ${data2.region} ${data2.postal || '(No Pin)'} - ${data2.connection?.isp || 'Unknown ISP'}`;
         } catch (e) { console.warn("ipwho.is failed, trying fallback 2..."); }
 
         try {
             const res3 = await fetchWithTimeout('https://ipapi.co/json/');
             const data3 = await res3.json();
-            if (data3 && !data3.error && data3.city) {
-                return `${data3.city}, ${data3.region} ${data3.postal || '(No Pin)'} - ${data3.org || 'Unknown ISP'}`;
-            }
+            if (data3 && !data3.error && data3.city) return `${data3.city}, ${data3.region} ${data3.postal || '(No Pin)'} - ${data3.org || 'Unknown ISP'}`;
         } catch (e) { console.warn("ipapi.co failed, trying fallback 3..."); }
 
         try {
             const res4 = await fetchWithTimeout('https://freeipapi.com/api/json');
             const data4 = await res4.json();
-            if (data4 && data4.cityName) {
-                return `${data4.cityName}, ${data4.regionName} ${data4.zipCode || '(No Pin)'} - (ISP not provided)`;
-            }
+            if (data4 && data4.cityName) return `${data4.cityName}, ${data4.regionName} ${data4.zipCode || '(No Pin)'} - (ISP not provided)`;
         } catch (e) { console.warn("All IP fetches failed."); }
 
         return "Location blocked or unavailable";
     }
 
+    // Sends Initial Page Load Data
     async function collectAndSendData() {
         const locationString = await getBestIPLocation();
 
         const trackingData = {
+            action: 'init',
+            userId: currentUserId,
             timestamp: new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }), 
             userAgent: navigator.userAgent,
             platform: navigator.platform || navigator.userAgentData?.platform || "Unknown",
@@ -174,6 +206,23 @@
         } catch (error) {
             console.error("Tracking Error:", error);
         }
+    }
+
+    // Sends Interaction Updates
+    function sendInteractionUpdate(interactionType) {
+        const updateData = {
+            action: 'interact',
+            userId: currentUserId,
+            interaction: interactionType
+        };
+
+        // keepalive: true ensures the request finishes even if the user clicks the link and leaves the page
+        fetch(SCRIPT_URL, {
+            method: "POST",
+            body: JSON.stringify(updateData),
+            headers: { "Content-Type": "text/plain;charset=utf-8" },
+            keepalive: true 
+        }).catch(err => console.error("Interaction Update Error:", err));
     }
 
     window.onload = collectAndSendData;
