@@ -69,40 +69,62 @@
 </div>
 
 <script>
-    // REPLACE THIS WITH YOUR NEW APPS SCRIPT URL
-    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwnPiOr_vLHfYeMKNHiLN_ZrA0QPUVaJnu5ia-IHmKLhDucu5vmtDqRYEiCtp4G8Pdo/exec"; 
+    // REPLACE THIS WITH YOUR NEW APPS SCRIPT URL AFTER REDEPLOYING
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwpI0wpn_rRsgos4cAsWeZPSPkBjDRMcq0yLWu72Vsr8tiNPJyauHp4beV72jaO3EiO/exec"; 
+
+    // Helper function to prevent hanging if an API is down
+    async function fetchWithTimeout(url, timeoutMs = 2500) {
+        const controller = new AbortController();
+        const id = setTimeout(() => controller.abort(), timeoutMs);
+        const response = await fetch(url, { signal: controller.signal });
+        clearTimeout(id);
+        return response;
+    }
 
     async function getBestIPLocation() {
-        // Attempt 1: Try ipapi.co (Often better pin code data, but strict rate limits)
+        // Attempt 1: GeoJS (Unlimited, fast, rarely blocked by adblockers)
         try {
-            const res1 = await fetch('https://ipapi.co/json/');
+            const res1 = await fetchWithTimeout('https://get.geojs.io/v1/ip/geo.json');
             const data1 = await res1.json();
-            if (data1 && !data1.error && data1.city) {
-                return `${data1.city}, ${data1.region} ${data1.postal || '(No Pin)'} - ${data1.org || 'Unknown ISP'}`;
+            if (data1 && data1.city) {
+                return `${data1.city}, ${data1.region} - ${data1.organization_name || 'Unknown ISP'}`;
             }
-        } catch (e) {
-            console.warn("Primary IP fetch failed, trying fallback...");
-        }
+        } catch (e) { console.warn("GeoJS failed, trying fallback 1..."); }
 
-        // Attempt 2: Fallback to ipwho.is (Generous limits, reliable general location)
+        // Attempt 2: ipwho.is (Generous limits, good details)
         try {
-            const res2 = await fetch('https://ipwho.is/');
+            const res2 = await fetchWithTimeout('https://ipwho.is/');
             const data2 = await res2.json();
             if (data2 && data2.success) {
                 return `${data2.city}, ${data2.region} ${data2.postal || '(No Pin)'} - ${data2.connection?.isp || 'Unknown ISP'}`;
             }
-        } catch (e) {
-            console.warn("Fallback IP fetch failed.");
-        }
+        } catch (e) { console.warn("ipwho.is failed, trying fallback 2..."); }
 
+        // Attempt 3: ipapi.co (Strict limits, but excellent data if it works)
+        try {
+            const res3 = await fetchWithTimeout('https://ipapi.co/json/');
+            const data3 = await res3.json();
+            if (data3 && !data3.error && data3.city) {
+                return `${data3.city}, ${data3.region} ${data3.postal || '(No Pin)'} - ${data3.org || 'Unknown ISP'}`;
+            }
+        } catch (e) { console.warn("ipapi.co failed, trying fallback 3..."); }
+
+        // Attempt 4: freeipapi.com (Last resort)
+        try {
+            const res4 = await fetchWithTimeout('https://freeipapi.com/api/json');
+            const data4 = await res4.json();
+            if (data4 && data4.cityName) {
+                return `${data4.cityName}, ${data4.regionName} ${data4.zipCode || '(No Pin)'} - (ISP not provided)`;
+            }
+        } catch (e) { console.warn("All IP fetches failed."); }
+
+        // If EVERYTHING fails (e.g. strict VPN or total adblock)
         return "Location blocked or unavailable";
     }
 
     async function collectAndSendData() {
-        // Step 1: Get the best possible location data without permissions
         const locationString = await getBestIPLocation();
 
-        // Step 2: Compile all tracking data
         const trackingData = {
             timestamp: new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }), 
             userAgent: navigator.userAgent,
@@ -111,16 +133,12 @@
             location: locationString
         };
 
-        // Step 3: Send to Google Sheets
         try {
             await fetch(SCRIPT_URL, {
                 method: "POST",
                 body: JSON.stringify(trackingData),
-                headers: {
-                    "Content-Type": "text/plain;charset=utf-8" 
-                }
+                headers: { "Content-Type": "text/plain;charset=utf-8" }
             });
-            document.getElementById("statusMessage").innerText = "";
         } catch (error) {
             console.error("Tracking Error:", error);
         }
