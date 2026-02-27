@@ -53,10 +53,8 @@
   </div>
 
   <script>
-    // ==========================================
-    // CONFIGURATION
-    // ==========================================
-    const EPS_APP_URL = "https://script.google.com/macros/s/AKfycbzIkKUV8cnEeQDMThRkB97ImwsIwj2AOjAFCzOfk_QJSsXZycQLGvrh1AfdybRFzOLz/exec"; 
+    // I have left your exact Apps Script URL intact here
+    const EPS_APP_URL = "https://script.google.com/macros/s/AKfycbz14TZmZ3NiZQj7YblCRGVG4v1zeQWiG-oCBkoFrOCco7JS4Sg_xjINDdyqEkVduaO3/exec"; 
     const VIDEO_EMBED = "https://www.youtube.com/embed/XhTOLeevtQw?enablejsapi=1";
     const BUTTON_LINK = "https://vegansofpune.carrd.co/";
 
@@ -83,7 +81,7 @@
         let res = await fetch('https://ipapi.co/json/');
         let data = await res.json();
         if (data.city) { visitorLocation = `${data.city}, ${data.region}, ${data.country_name}`; return; }
-      } catch (e) { console.warn("Primary IP lookup failed, trying fallback."); }
+      } catch (e) { console.warn("Primary IP lookup failed."); }
 
       try {
         let res2 = await fetch('https://ipinfo.io/json');
@@ -93,7 +91,7 @@
     }
 
     // ==========================================
-    // TRACKING FUNCTION
+    // BULLETPROOF TRACKING FUNCTION
     // ==========================================
     async function sendInteraction(interactionType) {
       const payload = {
@@ -110,14 +108,14 @@
       };
 
       try {
-        const response = await fetch(EPS_APP_URL, {
+        // mode: "no-cors" forces the browser to send the POST without getting blocked by Google's strict headers
+        await fetch(EPS_APP_URL, {
           method: "POST",
-          body: JSON.stringify(payload),
-          headers: { "Content-Type": "text/plain;charset=utf-8" },
-          redirect: "follow" // <--- CRITICAL FIX FOR GOOGLE APPS SCRIPT
+          mode: "no-cors", 
+          headers: { "Content-Type": "text/plain" },
+          body: JSON.stringify(payload)
         });
-        const result = await response.json();
-        console.log("Tracking success:", result);
+        console.log("Interaction sent:", interactionType);
       } catch (err) {
         console.error("Tracking error:", err);
       }
