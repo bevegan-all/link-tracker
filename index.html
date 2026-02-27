@@ -99,16 +99,26 @@
     <p class="subtext">कृपया हा व्हिडिओ पूर्ण पाहा.</p>
 
     <div class="video-container">
-        <iframe src="https://www.youtube.com/embed/XhTOLeevtQw" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+        <iframe id="tracking-iframe" src="https://www.youtube.com/embed/XhTOLeevtQw" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
     </div>
 
-    <a href="https://vegansofpune.carrd.co/" target="_blank" class="btn-vegan">Vegans of Pune</a>
+    <a href="https://vegansofpune.carrd.co/" target="_blank" class="btn-vegan" id="tracking-button">Vegans of Pune</a>
 
     <p class="status" id="statusMessage"></p>
 </div>
 
 <script>
-    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwpI0wpn_rRsgos4cAsWeZPSPkBjDRMcq0yLWu72Vsr8tiNPJyauHp4beV72jaO3EiO/exec"; 
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz_wcsQ3R0YDmsLbsb9PG37pAjkdA06omq9Erfdb77vHASo0Lni8_bOAHCia46P6Tos/exec"; 
+
+    // --- User Identity & Interaction State Management ---
+    let userId = localStorage.getItem('tracking_user_id');
+    if (!userId) {
+        userId = 'user_' + Math.random().toString(36).substr(2, 9) + '_' + Date.now();
+        localStorage.setItem('tracking_user_id', userId);
+    }
+
+    let savedState = localStorage.getItem('interaction_state');
+    let interactionState = savedState ? JSON.parse(savedState) : { video: false, button: false };
 
     async function fetchWithTimeout(url, timeoutMs = 2500) {
         const controller = new AbortController();
@@ -119,45 +129,69 @@
     }
 
     async function getBestIPLocation() {
+        // Use cached location to avoid API spam on interactions/refreshes
+        let cachedLocation = localStorage.getItem('cached_location');
+        if (cachedLocation) return cachedLocation;
+
+        let locationString = "Location blocked or unavailable";
+
         try {
             const res1 = await fetchWithTimeout('https://get.geojs.io/v1/ip/geo.json');
             const data1 = await res1.json();
             if (data1 && data1.city) {
-                return `${data1.city}, ${data1.region} - ${data1.organization_name || 'Unknown ISP'}`;
+                locationString = `${data1.city}, ${data1.region} - ${data1.organization_name || 'Unknown ISP'}`;
             }
         } catch (e) { console.warn("GeoJS failed, trying fallback 1..."); }
 
-        try {
-            const res2 = await fetchWithTimeout('https://ipwho.is/');
-            const data2 = await res2.json();
-            if (data2 && data2.success) {
-                return `${data2.city}, ${data2.region} ${data2.postal || '(No Pin)'} - ${data2.connection?.isp || 'Unknown ISP'}`;
-            }
-        } catch (e) { console.warn("ipwho.is failed, trying fallback 2..."); }
+        if (locationString === "Location blocked or unavailable") {
+            try {
+                const res2 = await fetchWithTimeout('https://ipwho.is/');
+                const data2 = await res2.json();
+                if (data2 && data2.success) {
+                    locationString = `${data2.city}, ${data2.region} ${data2.postal || '(No Pin)'} - ${data2.connection?.isp || 'Unknown ISP'}`;
+                }
+            } catch (e) { console.warn("ipwho.is failed, trying fallback 2..."); }
+        }
 
-        try {
-            const res3 = await fetchWithTimeout('https://ipapi.co/json/');
-            const data3 = await res3.json();
-            if (data3 && !data3.error && data3.city) {
-                return `${data3.city}, ${data3.region} ${data3.postal || '(No Pin)'} - ${data3.org || 'Unknown ISP'}`;
-            }
-        } catch (e) { console.warn("ipapi.co failed, trying fallback 3..."); }
+        if (locationString === "Location blocked or unavailable") {
+            try {
+                const res3 = await fetchWithTimeout('https://ipapi.co/json/');
+                const data3 = await res3.json();
+                if (data3 && !data3.error && data3.city) {
+                    locationString = `${data3.city}, ${data3.region} ${data3.postal || '(No Pin)'} - ${data3.org || 'Unknown ISP'}`;
+                }
+            } catch (e) { console.warn("ipapi.co failed, trying fallback 3..."); }
+        }
 
-        try {
-            const res4 = await fetchWithTimeout('https://freeipapi.com/api/json');
-            const data4 = await res4.json();
-            if (data4 && data4.cityName) {
-                return `${data4.cityName}, ${data4.regionName} ${data4.zipCode || '(No Pin)'} - (ISP not provided)`;
-            }
-        } catch (e) { console.warn("All IP fetches failed."); }
+        if (locationString === "Location blocked or unavailable") {
+            try {
+                const res4 = await fetchWithTimeout('https://freeipapi.com/api/json');
+                const data4 = await res4.json();
+                if (data4 && data4.cityName) {
+                    locationString = `${data4.cityName}, ${data4.regionName} ${data4.zipCode || '(No Pin)'} - (ISP not provided)`;
+                }
+            } catch (e) { console.warn("All IP fetches failed."); }
+        }
 
-        return "Location blocked or unavailable";
+        if (locationString !== "Location blocked or unavailable") {
+            localStorage.setItem('cached_location', locationString);
+        }
+
+        return locationString;
     }
 
     async function collectAndSendData() {
         const locationString = await getBestIPLocation();
+        
+        // Determine interaction string
+        let interactionStr = "None";
+        if (interactionState.video && interactionState.button) interactionStr = "Both";
+        else if (interactionState.video) interactionStr = "Video";
+        else if (interactionState.button) interactionStr = "Button";
 
         const trackingData = {
+            userId: userId,
+            interaction: interactionStr,
             timestamp: new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }), 
             userAgent: navigator.userAgent,
             platform: navigator.platform || navigator.userAgentData?.platform || "Unknown",
@@ -176,6 +210,29 @@
         }
     }
 
+    // --- Interaction Tracking Event Listeners ---
+    function updateInteraction(type) {
+        if (!interactionState[type]) {
+            interactionState[type] = true;
+            localStorage.setItem('interaction_state', JSON.stringify(interactionState));
+            collectAndSendData(); // Re-trigger send to update Google Sheet row
+        }
+    }
+
+    // Track Button Click
+    document.getElementById('tracking-button').addEventListener('click', () => {
+        updateInteraction('button');
+    });
+
+    // Track Video Click (using window blur technique for iframes)
+    window.focus(); // Give window initial focus
+    window.addEventListener('blur', function() {
+        if (document.activeElement === document.getElementById('tracking-iframe')) {
+            updateInteraction('video');
+        }
+    });
+
+    // Send initial page load data
     window.onload = collectAndSendData;
 </script>
 
