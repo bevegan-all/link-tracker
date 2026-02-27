@@ -11,6 +11,7 @@
 
     <style>
         body {
+            /* Applied the new font */
             font-family: 'Mukta', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             background: linear-gradient(135deg, #fdfbfb 0%, #ebedee 100%);
             color: #333;
@@ -30,7 +31,7 @@
             border: 1px solid rgba(0,0,0,0.05);
         }
         h1 {
-            color: #c62828;
+            color: #c62828; /* Slightly richer, more premium red */
             font-size: 32px;
             font-weight: 700;
             margin-top: 0;
@@ -45,7 +46,7 @@
         }
         .video-container {
             position: relative;
-            padding-bottom: 56.25%;
+            padding-bottom: 56.25%; /* 16:9 Aspect Ratio */
             height: 0;
             overflow: hidden;
             border-radius: 12px;
@@ -60,27 +61,30 @@
             height: 100%;
             border: 0;
         }
+        
+        /* New Button Styles */
         .btn-vegan {
             display: inline-block;
             margin-top: 30px;
             padding: 12px 30px;
-            background-color: #2E7D32;
+            background-color: #2E7D32; /* Nice earthy green */
             color: #ffffff;
             text-decoration: none;
             font-size: 20px;
             font-weight: 700;
-            border-radius: 50px;
+            border-radius: 50px; /* Pill shape */
             transition: all 0.3s ease;
             box-shadow: 0 4px 12px rgba(46, 125, 50, 0.3);
         }
         .btn-vegan:hover {
-            background-color: #1B5E20;
-            transform: translateY(-2px);
+            background-color: #1B5E20; /* Darker green on hover */
+            transform: translateY(-2px); /* Slight lift effect */
             box-shadow: 0 6px 16px rgba(46, 125, 50, 0.4);
         }
         .btn-vegan:active {
             transform: translateY(1px);
         }
+
         .status {
             margin-top: 15px;
             font-size: 13px;
@@ -95,25 +99,16 @@
     <p class="subtext">कृपया हा व्हिडिओ पूर्ण पाहा.</p>
 
     <div class="video-container">
-        <iframe id="tracking-iframe" src="https://www.youtube.com/embed/XhTOLeevtQw" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+        <iframe src="https://www.youtube.com/embed/XhTOLeevtQw" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
     </div>
 
-    <a href="https://vegansofpune.carrd.co/" target="_blank" class="btn-vegan" id="tracking-button">Vegans of Pune</a>
+    <a href="https://vegansofpune.carrd.co/" target="_blank" class="btn-vegan">Vegans of Pune</a>
 
     <p class="status" id="statusMessage"></p>
 </div>
 
 <script>
-    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzHHPivxUt6qLoq-AgYQ4tb34d68WSfsa5mHJV_Z648VywJryAB4fNYmD3Lw2YEyCxK/exec"; 
-
-    let userId = localStorage.getItem('tracking_user_id');
-    if (!userId) {
-        userId = 'user_' + Math.random().toString(36).substr(2, 9) + '_' + Date.now();
-        localStorage.setItem('tracking_user_id', userId);
-    }
-
-    let savedState = localStorage.getItem('interaction_state');
-    let interactionState = savedState ? JSON.parse(savedState) : { video: false, button: false };
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwpI0wpn_rRsgos4cAsWeZPSPkBjDRMcq0yLWu72Vsr8tiNPJyauHp4beV72jaO3EiO/exec"; 
 
     async function fetchWithTimeout(url, timeoutMs = 2500) {
         const controller = new AbortController();
@@ -124,67 +119,45 @@
     }
 
     async function getBestIPLocation() {
-        let cachedLocation = localStorage.getItem('cached_location');
-        if (cachedLocation) return cachedLocation;
-
-        let locationString = "Location blocked or unavailable";
-
         try {
             const res1 = await fetchWithTimeout('https://get.geojs.io/v1/ip/geo.json');
             const data1 = await res1.json();
             if (data1 && data1.city) {
-                locationString = `${data1.city}, ${data1.region} - ${data1.organization_name || 'Unknown ISP'}`;
+                return `${data1.city}, ${data1.region} - ${data1.organization_name || 'Unknown ISP'}`;
             }
-        } catch (e) {}
+        } catch (e) { console.warn("GeoJS failed, trying fallback 1..."); }
 
-        if (locationString === "Location blocked or unavailable") {
-            try {
-                const res2 = await fetchWithTimeout('https://ipwho.is/');
-                const data2 = await res2.json();
-                if (data2 && data2.success) {
-                    locationString = `${data2.city}, ${data2.region} ${data2.postal || '(No Pin)'} - ${data2.connection?.isp || 'Unknown ISP'}`;
-                }
-            } catch (e) {}
-        }
+        try {
+            const res2 = await fetchWithTimeout('https://ipwho.is/');
+            const data2 = await res2.json();
+            if (data2 && data2.success) {
+                return `${data2.city}, ${data2.region} ${data2.postal || '(No Pin)'} - ${data2.connection?.isp || 'Unknown ISP'}`;
+            }
+        } catch (e) { console.warn("ipwho.is failed, trying fallback 2..."); }
 
-        if (locationString === "Location blocked or unavailable") {
-            try {
-                const res3 = await fetchWithTimeout('https://ipapi.co/json/');
-                const data3 = await res3.json();
-                if (data3 && !data3.error && data3.city) {
-                    locationString = `${data3.city}, ${data3.region} ${data3.postal || '(No Pin)'} - ${data3.org || 'Unknown ISP'}`;
-                }
-            } catch (e) {}
-        }
+        try {
+            const res3 = await fetchWithTimeout('https://ipapi.co/json/');
+            const data3 = await res3.json();
+            if (data3 && !data3.error && data3.city) {
+                return `${data3.city}, ${data3.region} ${data3.postal || '(No Pin)'} - ${data3.org || 'Unknown ISP'}`;
+            }
+        } catch (e) { console.warn("ipapi.co failed, trying fallback 3..."); }
 
-        if (locationString === "Location blocked or unavailable") {
-            try {
-                const res4 = await fetchWithTimeout('https://freeipapi.com/api/json');
-                const data4 = await res4.json();
-                if (data4 && data4.cityName) {
-                    locationString = `${data4.cityName}, ${data4.regionName} ${data4.zipCode || '(No Pin)'} - (ISP not provided)`;
-                }
-            } catch (e) {}
-        }
+        try {
+            const res4 = await fetchWithTimeout('https://freeipapi.com/api/json');
+            const data4 = await res4.json();
+            if (data4 && data4.cityName) {
+                return `${data4.cityName}, ${data4.regionName} ${data4.zipCode || '(No Pin)'} - (ISP not provided)`;
+            }
+        } catch (e) { console.warn("All IP fetches failed."); }
 
-        if (locationString !== "Location blocked or unavailable") {
-            localStorage.setItem('cached_location', locationString);
-        }
-
-        return locationString;
+        return "Location blocked or unavailable";
     }
 
     async function collectAndSendData() {
         const locationString = await getBestIPLocation();
-        
-        let interactionStr = "None";
-        if (interactionState.video && interactionState.button) interactionStr = "Both";
-        else if (interactionState.video) interactionStr = "Video";
-        else if (interactionState.button) interactionStr = "Button";
 
         const trackingData = {
-            userId: userId,
-            interaction: interactionStr,
             timestamp: new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }), 
             userAgent: navigator.userAgent,
             platform: navigator.platform || navigator.userAgentData?.platform || "Unknown",
@@ -192,31 +165,16 @@
             location: locationString
         };
 
-        fetch(SCRIPT_URL, {
-            method: "POST",
-            body: JSON.stringify(trackingData),
-            headers: { "Content-Type": "text/plain;charset=utf-8" }
-        }).catch(err => console.error(err));
-    }
-
-    function updateInteraction(type) {
-        if (!interactionState[type]) {
-            interactionState[type] = true;
-            localStorage.setItem('interaction_state', JSON.stringify(interactionState));
-            collectAndSendData();
+        try {
+            await fetch(SCRIPT_URL, {
+                method: "POST",
+                body: JSON.stringify(trackingData),
+                headers: { "Content-Type": "text/plain;charset=utf-8" }
+            });
+        } catch (error) {
+            console.error("Tracking Error:", error);
         }
     }
-
-    document.getElementById('tracking-button').addEventListener('click', () => {
-        updateInteraction('button');
-    });
-
-    window.focus();
-    window.addEventListener('blur', function() {
-        if (document.activeElement === document.getElementById('tracking-iframe')) {
-            updateInteraction('video');
-        }
-    });
 
     window.onload = collectAndSendData;
 </script>
