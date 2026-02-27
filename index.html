@@ -5,77 +5,39 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>विशेष संदेश</title>
   <style>
-    /* Modern, Mobile-First CSS */
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
       background-color: #f0f2f5;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      min-height: 100vh;
-      padding: 20px;
+      display: flex; justify-content: center; align-items: center;
+      min-height: 100vh; padding: 20px;
     }
     .card {
-      background: #ffffff;
-      max-width: 720px;
-      width: 100%;
-      border-radius: 16px;
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
-      padding: 30px 20px;
-      text-align: center;
+      background: #ffffff; max-width: 720px; width: 100%;
+      border-radius: 16px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+      padding: 30px 20px; text-align: center;
     }
     .card h1 {
-      color: #d32f2f; /* Bold red */
-      font-weight: 800;
-      font-size: 1.8rem;
-      margin-bottom: 25px;
-      line-height: 1.3;
+      color: #d32f2f; font-weight: 800; font-size: 1.8rem;
+      margin-bottom: 25px; line-height: 1.3;
     }
     .video-container {
-      position: relative;
-      width: 100%;
-      padding-bottom: 56.25%; /* 16:9 Aspect Ratio */
-      border-radius: 12px;
-      overflow: hidden;
-      margin-bottom: 30px;
-      background-color: #000;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      position: relative; width: 100%; padding-bottom: 56.25%; 
+      border-radius: 12px; overflow: hidden; margin-bottom: 30px;
+      background-color: #000; box-shadow: 0 4px 12px rgba(0,0,0,0.15);
     }
     .video-container iframe {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      border: none;
+      position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none;
     }
     .cta-button {
-      display: inline-block;
-      background-color: #28a745; /* Green pill button */
-      color: #ffffff;
-      text-decoration: none;
-      font-size: 1.25rem;
-      font-weight: bold;
-      padding: 16px 40px;
-      border-radius: 50px;
+      display: inline-block; background-color: #28a745; color: #ffffff;
+      text-decoration: none; font-size: 1.25rem; font-weight: bold;
+      padding: 16px 40px; border-radius: 50px;
       transition: background-color 0.3s ease, transform 0.2s ease;
-      box-shadow: 0 4px 10px rgba(40, 167, 69, 0.3);
-      width: 100%;
-      max-width: 300px;
+      box-shadow: 0 4px 10px rgba(40, 167, 69, 0.3); width: 100%; max-width: 300px;
     }
-    .cta-button:hover {
-      background-color: #218838;
-      transform: translateY(-2px);
-    }
-    @media (min-width: 600px) {
-      .card h1 { font-size: 2.2rem; }
-      .card { padding: 40px; }
-    }
+    .cta-button:hover { background-color: #218838; transform: translateY(-2px); }
+    @media (min-width: 600px) { .card h1 { font-size: 2.2rem; } .card { padding: 40px; } }
   </style>
 </head>
 <body>
@@ -92,19 +54,15 @@
 
   <script>
     // ==========================================
-    // CONFIGURATION VARIABLES (Edit these)
+    // CONFIGURATION
     // ==========================================
-    const EPS_APP_URL = "https://script.google.com/macros/s/AKfycbykz7Gz3D7JCJxdxIndUf0jslBK8K8EI_D_H6R9PDfhVzbBH6KvjMduPjH24m3GhBrZ/exec"; 
+    const EPS_APP_URL = "https://script.google.com/macros/s/AKfycbzIkKUV8cnEeQDMThRkB97ImwsIwj2AOjAFCzOfk_QJSsXZycQLGvrh1AfdybRFzOLz/exec"; 
     const VIDEO_EMBED = "https://www.youtube.com/embed/XhTOLeevtQw?enablejsapi=1";
     const BUTTON_LINK = "https://vegansofpune.carrd.co/";
 
-    // ==========================================
-    // INITIALIZATION & STATE
-    // ==========================================
     let visitorLocation = "Unknown";
     let videoInteractionRecorded = false;
 
-    // 1. Manage Session ID (Persists across page loads in same browser)
     function getSessionId() {
       let sid = localStorage.getItem('visitor_session_id');
       if (!sid) {
@@ -114,30 +72,23 @@
       return sid;
     }
 
-    // 2. Determine Referrer (Prefers ?ref= parameter)
     function getReferrer() {
       const urlParams = new URLSearchParams(window.location.search);
       if (urlParams.get('ref') === 'QR') return 'QR';
       return document.referrer || 'Direct';
     }
 
-    // 3. Client-Side IP Geolocation with fallback
     async function fetchLocation() {
       try {
         let res = await fetch('https://ipapi.co/json/');
         let data = await res.json();
-        if (data.city) {
-          visitorLocation = `${data.city}, ${data.region}, ${data.country_name}`;
-          return;
-        }
+        if (data.city) { visitorLocation = `${data.city}, ${data.region}, ${data.country_name}`; return; }
       } catch (e) { console.warn("Primary IP lookup failed, trying fallback."); }
 
       try {
         let res2 = await fetch('https://ipinfo.io/json');
         let data2 = await res2.json();
-        if (data2.city) {
-          visitorLocation = `${data2.city}, ${data2.region}, ${data2.country}`;
-        }
+        if (data2.city) { visitorLocation = `${data2.city}, ${data2.region}, ${data2.country}`; }
       } catch (e) { console.warn("Fallback IP lookup failed."); }
     }
 
@@ -145,11 +96,6 @@
     // TRACKING FUNCTION
     // ==========================================
     async function sendInteraction(interactionType) {
-      if (!EPS_APP_URL || EPS_APP_URL.includes("YOUR_GOOGLE_APPS")) {
-        console.warn("EPS_APP_URL not configured. Skipping tracking.");
-        return;
-      }
-
       const payload = {
         sessionId: getSessionId(),
         userAgent: navigator.userAgent,
@@ -164,57 +110,50 @@
       };
 
       try {
-        await fetch(EPS_APP_URL, {
+        const response = await fetch(EPS_APP_URL, {
           method: "POST",
           body: JSON.stringify(payload),
-          headers: { "Content-Type": "text/plain;charset=utf-8" } // Using text/plain avoids strict CORS preflight issues
+          headers: { "Content-Type": "text/plain;charset=utf-8" },
+          redirect: "follow" // <--- CRITICAL FIX FOR GOOGLE APPS SCRIPT
         });
+        const result = await response.json();
+        console.log("Tracking success:", result);
       } catch (err) {
         console.error("Tracking error:", err);
       }
     }
 
     // ==========================================
-    // YOUTUBE & BUTTON EVENT LISTENERS
+    // EVENT LISTENERS
     // ==========================================
-    
-    // Set iframe source
     document.getElementById('youtube-player').src = VIDEO_EMBED;
 
-    // Load YouTube IFrame API
     const tag = document.createElement('script');
     tag.src = "https://www.youtube.com/iframe_api";
     const firstScriptTag = document.getElementsByTagName('script')[0];
     firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
 
     let player;
-    function onYouTubeIframeAPIReady() {
+    window.onYouTubeIframeAPIReady = function() {
       player = new YT.Player('youtube-player', {
         events: { 'onStateChange': onPlayerStateChange }
       });
     }
 
     function onPlayerStateChange(event) {
-      // state==1 means PLAYING
       if (event.data === 1 && !videoInteractionRecorded) {
         videoInteractionRecorded = true;
         sendInteraction("video");
       }
     }
 
-    // Handle Button Click
     document.getElementById('cta-button').addEventListener('click', async function(e) {
       e.preventDefault();
-      // Record click without hanging the user's redirect indefinitely 
-      // Use Promise.race to enforce a 1.5s max timeout for the tracking call
       const timeout = new Promise(resolve => setTimeout(resolve, 1500));
       await Promise.race([sendInteraction("button"), timeout]);
-      
-      // Redirect to the actual link
       window.location.href = BUTTON_LINK;
     });
 
-    // Initialize location lookup on load
     fetchLocation();
   </script>
 </body>
