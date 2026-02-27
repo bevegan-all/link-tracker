@@ -11,7 +11,6 @@
 
     <style>
         body {
-            /* Applied the new font */
             font-family: 'Mukta', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             background: linear-gradient(135deg, #fdfbfb 0%, #ebedee 100%);
             color: #333;
@@ -31,7 +30,7 @@
             border: 1px solid rgba(0,0,0,0.05);
         }
         h1 {
-            color: #c62828; /* Slightly richer, more premium red */
+            color: #c62828;
             font-size: 32px;
             font-weight: 700;
             margin-top: 0;
@@ -46,7 +45,7 @@
         }
         .video-container {
             position: relative;
-            padding-bottom: 56.25%; /* 16:9 Aspect Ratio */
+            padding-bottom: 56.25%;
             height: 0;
             overflow: hidden;
             border-radius: 12px;
@@ -61,30 +60,27 @@
             height: 100%;
             border: 0;
         }
-        
-        /* New Button Styles */
         .btn-vegan {
             display: inline-block;
             margin-top: 30px;
             padding: 12px 30px;
-            background-color: #2E7D32; /* Nice earthy green */
+            background-color: #2E7D32;
             color: #ffffff;
             text-decoration: none;
             font-size: 20px;
             font-weight: 700;
-            border-radius: 50px; /* Pill shape */
+            border-radius: 50px;
             transition: all 0.3s ease;
             box-shadow: 0 4px 12px rgba(46, 125, 50, 0.3);
         }
         .btn-vegan:hover {
-            background-color: #1B5E20; /* Darker green on hover */
-            transform: translateY(-2px); /* Slight lift effect */
+            background-color: #1B5E20;
+            transform: translateY(-2px);
             box-shadow: 0 6px 16px rgba(46, 125, 50, 0.4);
         }
         .btn-vegan:active {
             transform: translateY(1px);
         }
-
         .status {
             margin-top: 15px;
             font-size: 13px;
@@ -108,9 +104,9 @@
 </div>
 
 <script>
-    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz_wcsQ3R0YDmsLbsb9PG37pAjkdA06omq9Erfdb77vHASo0Lni8_bOAHCia46P6Tos/exec"; 
+    // MAKE SURE THIS URL IS YOUR *NEWLY DEPLOYED* WEB APP URL
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwxR04mEajg_VZZYsUfAaaEJm3B01Kh8q4nxr1ffnXZabiBF7FOfWgSbDkLWaKnLSEv/exec"; 
 
-    // --- User Identity & Interaction State Management ---
     let userId = localStorage.getItem('tracking_user_id');
     if (!userId) {
         userId = 'user_' + Math.random().toString(36).substr(2, 9) + '_' + Date.now();
@@ -129,7 +125,6 @@
     }
 
     async function getBestIPLocation() {
-        // Use cached location to avoid API spam on interactions/refreshes
         let cachedLocation = localStorage.getItem('cached_location');
         if (cachedLocation) return cachedLocation;
 
@@ -183,7 +178,6 @@
     async function collectAndSendData() {
         const locationString = await getBestIPLocation();
         
-        // Determine interaction string
         let interactionStr = "None";
         if (interactionState.video && interactionState.button) interactionStr = "Both";
         else if (interactionState.video) interactionStr = "Video";
@@ -200,8 +194,11 @@
         };
 
         try {
+            // mode: 'no-cors' prevents browser blocking, keepalive ensures it fires even on close
             await fetch(SCRIPT_URL, {
                 method: "POST",
+                mode: "no-cors",
+                keepalive: true,
                 body: JSON.stringify(trackingData),
                 headers: { "Content-Type": "text/plain;charset=utf-8" }
             });
@@ -210,29 +207,25 @@
         }
     }
 
-    // --- Interaction Tracking Event Listeners ---
     function updateInteraction(type) {
         if (!interactionState[type]) {
             interactionState[type] = true;
             localStorage.setItem('interaction_state', JSON.stringify(interactionState));
-            collectAndSendData(); // Re-trigger send to update Google Sheet row
+            collectAndSendData();
         }
     }
 
-    // Track Button Click
     document.getElementById('tracking-button').addEventListener('click', () => {
         updateInteraction('button');
     });
 
-    // Track Video Click (using window blur technique for iframes)
-    window.focus(); // Give window initial focus
+    window.focus();
     window.addEventListener('blur', function() {
         if (document.activeElement === document.getElementById('tracking-iframe')) {
             updateInteraction('video');
         }
     });
 
-    // Send initial page load data
     window.onload = collectAndSendData;
 </script>
 
