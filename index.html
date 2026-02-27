@@ -69,28 +69,42 @@
 </div>
 
 <script>
-    // Your exact Google Apps Script Deployment URL
-    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwnPiOr_vLHfYeMKNHiLN_ZrA0QPUVaJnu5ia-IHmKLhDucu5vmtDqRYEiCtp4G8Pdo/exec"; 
+    // REPLACE THIS WITH YOUR NEW APPS SCRIPT URL
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbySiXzyeRDgTlGZRbqn5eTnzHrFdFzqrKRVmsnF6g8fNiy3eNNWtgKozCTRTfSg5qj7/exec"; 
+
+    async function getBestIPLocation() {
+        // Attempt 1: Try ipapi.co (Often better pin code data, but strict rate limits)
+        try {
+            const res1 = await fetch('https://ipapi.co/json/');
+            const data1 = await res1.json();
+            if (data1 && !data1.error && data1.city) {
+                return `${data1.city}, ${data1.region} ${data1.postal || '(No Pin)'} - ${data1.org || 'Unknown ISP'}`;
+            }
+        } catch (e) {
+            console.warn("Primary IP fetch failed, trying fallback...");
+        }
+
+        // Attempt 2: Fallback to ipwho.is (Generous limits, reliable general location)
+        try {
+            const res2 = await fetch('https://ipwho.is/');
+            const data2 = await res2.json();
+            if (data2 && data2.success) {
+                return `${data2.city}, ${data2.region} ${data2.postal || '(No Pin)'} - ${data2.connection?.isp || 'Unknown ISP'}`;
+            }
+        } catch (e) {
+            console.warn("Fallback IP fetch failed.");
+        }
+
+        return "Location blocked or unavailable";
+    }
 
     async function collectAndSendData() {
-        let locationString = "Location blocked or unavailable";
-
-        // Step 1: Try to get the most accurate IP location possible without asking permission
-        try {
-            const response = await fetch('https://ipwho.is/');
-            const geoData = await response.json();
-            
-            if (geoData.success) {
-                // This will try to output something like: "Pune, Maharashtra 411015 - Jio"
-                locationString = `${geoData.city}, ${geoData.region} ${geoData.postal || ''} - ${geoData.connection?.isp || 'Unknown ISP'}`;
-            }
-        } catch (error) {
-            console.warn("IP Geolocation blocked by browser/network.");
-        }
+        // Step 1: Get the best possible location data without permissions
+        const locationString = await getBestIPLocation();
 
         // Step 2: Compile all tracking data
         const trackingData = {
-            timestamp: new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }), // Better readable time in IST
+            timestamp: new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }), 
             userAgent: navigator.userAgent,
             platform: navigator.platform || navigator.userAgentData?.platform || "Unknown",
             referrer: document.referrer || "Direct/QR Scan",
@@ -103,7 +117,6 @@
                 method: "POST",
                 body: JSON.stringify(trackingData),
                 headers: {
-                    // text/plain prevents CORS preflight errors from blocking the request
                     "Content-Type": "text/plain;charset=utf-8" 
                 }
             });
