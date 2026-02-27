@@ -46,29 +46,18 @@
     <h1>प्राण्यांबद्दलची आपली समज बदलणारा व्हिडिओ</h1>
     
     <div class="video-container">
-      <iframe id="youtube-player" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+      <iframe src="https://www.youtube.com/embed/XhTOLeevtQw" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
     </div>
 
-    <a href="#" id="cta-button" class="cta-button">पुढे जा</a>
+    <a href="https://vegansofpune.carrd.co/" class="cta-button">पुढे जा</a>
   </div>
 
   <script>
-    // I have left your exact Apps Script URL intact here
-    const EPS_APP_URL = "https://script.google.com/macros/s/AKfycbz14TZmZ3NiZQj7YblCRGVG4v1zeQWiG-oCBkoFrOCco7JS4Sg_xjINDdyqEkVduaO3/exec"; 
-    const VIDEO_EMBED = "https://www.youtube.com/embed/XhTOLeevtQw?enablejsapi=1";
-    const BUTTON_LINK = "https://vegansofpune.carrd.co/";
-
-    let visitorLocation = "Unknown";
-    let videoInteractionRecorded = false;
-
-    function getSessionId() {
-      let sid = localStorage.getItem('visitor_session_id');
-      if (!sid) {
-        sid = 'sess_' + Math.random().toString(36).substring(2, 15) + Date.now().toString(36);
-        localStorage.setItem('visitor_session_id', sid);
-      }
-      return sid;
-    }
+    // ==========================================
+    // CONFIGURATION
+    // ==========================================
+    // I left your exact Apps Script URL here
+    const EPS_APP_URL = "https://script.google.com/macros/s/AKfycbyHS8pfMXjXR4s_-qtXytZnJv9IgNVngu81ImmBp_RUep1sQRNYeBmc6syyrO7tsw3b/exec"; 
 
     function getReferrer() {
       const urlParams = new URLSearchParams(window.location.search);
@@ -76,83 +65,46 @@
       return document.referrer || 'Direct';
     }
 
-    async function fetchLocation() {
+    async function logVisit() {
+      let visitorLocation = "Unknown";
+
+      // 1. Try to get location
       try {
         let res = await fetch('https://ipapi.co/json/');
         let data = await res.json();
-        if (data.city) { visitorLocation = `${data.city}, ${data.region}, ${data.country_name}`; return; }
-      } catch (e) { console.warn("Primary IP lookup failed."); }
+        if (data.city) { visitorLocation = `${data.city}, ${data.region}, ${data.country_name}`; }
+      } catch (e) {
+        try {
+          let res2 = await fetch('https://ipinfo.io/json');
+          let data2 = await res2.json();
+          if (data2.city) { visitorLocation = `${data2.city}, ${data2.region}, ${data2.country}`; }
+        } catch (err) { console.warn("Location lookups failed."); }
+      }
 
-      try {
-        let res2 = await fetch('https://ipinfo.io/json');
-        let data2 = await res2.json();
-        if (data2.city) { visitorLocation = `${data2.city}, ${data2.region}, ${data2.country}`; }
-      } catch (e) { console.warn("Fallback IP lookup failed."); }
-    }
-
-    // ==========================================
-    // BULLETPROOF TRACKING FUNCTION
-    // ==========================================
-    async function sendInteraction(interactionType) {
+      // 2. Prepare Data
       const payload = {
-        sessionId: getSessionId(),
         userAgent: navigator.userAgent,
         platform: navigator.platform || "Unknown",
         referrer: getReferrer(),
         location: visitorLocation,
-        interaction: interactionType,
-        pageUrl: window.location.href,
-        videoUrl: VIDEO_EMBED,
-        buttonUrl: BUTTON_LINK,
         timestamp: new Date().toISOString()
       };
 
+      // 3. Send to Google Sheets (Fire and forget)
       try {
-        // mode: "no-cors" forces the browser to send the POST without getting blocked by Google's strict headers
         await fetch(EPS_APP_URL, {
           method: "POST",
           mode: "no-cors", 
           headers: { "Content-Type": "text/plain" },
           body: JSON.stringify(payload)
         });
-        console.log("Interaction sent:", interactionType);
       } catch (err) {
-        console.error("Tracking error:", err);
+        console.error("Failed to send visit log:", err);
       }
     }
 
-    // ==========================================
-    // EVENT LISTENERS
-    // ==========================================
-    document.getElementById('youtube-player').src = VIDEO_EMBED;
-
-    const tag = document.createElement('script');
-    tag.src = "https://www.youtube.com/iframe_api";
-    const firstScriptTag = document.getElementsByTagName('script')[0];
-    firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
-
-    let player;
-    window.onYouTubeIframeAPIReady = function() {
-      player = new YT.Player('youtube-player', {
-        events: { 'onStateChange': onPlayerStateChange }
-      });
-    }
-
-    function onPlayerStateChange(event) {
-      if (event.data === 1 && !videoInteractionRecorded) {
-        videoInteractionRecorded = true;
-        sendInteraction("video");
-      }
-    }
-
-    document.getElementById('cta-button').addEventListener('click', async function(e) {
-      e.preventDefault();
-      const timeout = new Promise(resolve => setTimeout(resolve, 1500));
-      await Promise.race([sendInteraction("button"), timeout]);
-      window.location.href = BUTTON_LINK;
-    });
-
-    fetchLocation();
+    // Run the tracker immediately when the script loads
+    logVisit();
   </script>
 </body>
 </html>
