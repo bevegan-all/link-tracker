@@ -104,8 +104,7 @@
 </div>
 
 <script>
-    // MAKE SURE THIS URL IS YOUR *NEWLY DEPLOYED* WEB APP URL
-    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwxR04mEajg_VZZYsUfAaaEJm3B01Kh8q4nxr1ffnXZabiBF7FOfWgSbDkLWaKnLSEv/exec"; 
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzHHPivxUt6qLoq-AgYQ4tb34d68WSfsa5mHJV_Z648VywJryAB4fNYmD3Lw2YEyCxK/exec"; 
 
     let userId = localStorage.getItem('tracking_user_id');
     if (!userId) {
@@ -136,7 +135,7 @@
             if (data1 && data1.city) {
                 locationString = `${data1.city}, ${data1.region} - ${data1.organization_name || 'Unknown ISP'}`;
             }
-        } catch (e) { console.warn("GeoJS failed, trying fallback 1..."); }
+        } catch (e) {}
 
         if (locationString === "Location blocked or unavailable") {
             try {
@@ -145,7 +144,7 @@
                 if (data2 && data2.success) {
                     locationString = `${data2.city}, ${data2.region} ${data2.postal || '(No Pin)'} - ${data2.connection?.isp || 'Unknown ISP'}`;
                 }
-            } catch (e) { console.warn("ipwho.is failed, trying fallback 2..."); }
+            } catch (e) {}
         }
 
         if (locationString === "Location blocked or unavailable") {
@@ -155,7 +154,7 @@
                 if (data3 && !data3.error && data3.city) {
                     locationString = `${data3.city}, ${data3.region} ${data3.postal || '(No Pin)'} - ${data3.org || 'Unknown ISP'}`;
                 }
-            } catch (e) { console.warn("ipapi.co failed, trying fallback 3..."); }
+            } catch (e) {}
         }
 
         if (locationString === "Location blocked or unavailable") {
@@ -165,7 +164,7 @@
                 if (data4 && data4.cityName) {
                     locationString = `${data4.cityName}, ${data4.regionName} ${data4.zipCode || '(No Pin)'} - (ISP not provided)`;
                 }
-            } catch (e) { console.warn("All IP fetches failed."); }
+            } catch (e) {}
         }
 
         if (locationString !== "Location blocked or unavailable") {
@@ -193,18 +192,11 @@
             location: locationString
         };
 
-        try {
-            // mode: 'no-cors' prevents browser blocking, keepalive ensures it fires even on close
-            await fetch(SCRIPT_URL, {
-                method: "POST",
-                mode: "no-cors",
-                keepalive: true,
-                body: JSON.stringify(trackingData),
-                headers: { "Content-Type": "text/plain;charset=utf-8" }
-            });
-        } catch (error) {
-            console.error("Tracking Error:", error);
-        }
+        fetch(SCRIPT_URL, {
+            method: "POST",
+            body: JSON.stringify(trackingData),
+            headers: { "Content-Type": "text/plain;charset=utf-8" }
+        }).catch(err => console.error(err));
     }
 
     function updateInteraction(type) {
